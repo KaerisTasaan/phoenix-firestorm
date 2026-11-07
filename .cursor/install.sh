@@ -9,10 +9,9 @@ AUTOBUILD_ROOT="${AUTOBUILD_ROOT:-$SRC_ROOT/autobuild}"
 AUTOBUILD_COMMIT="main"
 VENV_ROOT="${VENV_ROOT:-$HOME/.venvs/firestorm-build}"
 FIRESTORM_RELEASE_REF="Firestorm_Release_7.2.5.81788"
-BASELINE_MARKER="${BASELINE_MARKER:-$HOME/.cache/firestorm-baseline-releasefs-open}"
 BASELINE_LOG="${BASELINE_LOG:-$HOME/.cache/firestorm-baseline-releasefs-open.log}"
 
-mkdir -p "$SRC_ROOT" "$HOME/.config" "$(dirname "$BASELINE_MARKER")"
+mkdir -p "$SRC_ROOT" "$HOME/.config" "$(dirname "$BASELINE_LOG")"
 
 git -C "$FIRESTORM_ROOT" fetch --tags origin
 git -C "$FIRESTORM_ROOT" checkout --detach "$FIRESTORM_RELEASE_REF"
@@ -49,20 +48,17 @@ export CXX=$(printf '%q' "$CXX")
 export PATH=$(printf '%q' "$VENV_ROOT/bin"):\$PATH
 EOF
 
-if [[ ! -e "$BASELINE_MARKER" ]]; then
-    (
-        cd "$FIRESTORM_ROOT"
-        {
-            printf 'Release ref: %s\n' "$FIRESTORM_RELEASE_REF"
-            printf 'Release commit: %s\n' "$(git rev-parse HEAD)"
-            printf 'Started: %s\n' "$(date --iso-8601=seconds)"
-            /usr/bin/time -v "$VENV_ROOT/bin/autobuild" configure -A 64 -c ReleaseFS_open
-            /usr/bin/time -v "$VENV_ROOT/bin/autobuild" build -A 64 -c ReleaseFS_open
-            printf 'Completed: %s\n' "$(date --iso-8601=seconds)"
-        } 2>&1 | tee "$BASELINE_LOG"
-    )
-    printf '%s\n' "$FIRESTORM_RELEASE_REF" > "$BASELINE_MARKER"
-fi
+(
+    cd "$FIRESTORM_ROOT"
+    {
+        printf 'Release ref: %s\n' "$FIRESTORM_RELEASE_REF"
+        printf 'Release commit: %s\n' "$(git rev-parse HEAD)"
+        printf 'Started: %s\n' "$(date --iso-8601=seconds)"
+        /usr/bin/time -v "$VENV_ROOT/bin/autobuild" configure -A 64 -c ReleaseFS_open
+        /usr/bin/time -v "$VENV_ROOT/bin/autobuild" build -A 64 -c ReleaseFS_open
+        printf 'Completed: %s\n' "$(date --iso-8601=seconds)"
+    } 2>&1 | tee "$BASELINE_LOG"
+)
 
 printf 'Build environment ready.\n'
 printf 'Source: %s\n' "$FIRESTORM_ROOT"
