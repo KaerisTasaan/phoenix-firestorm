@@ -7,7 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     cmake \
     curl \
+    dirmngr \
     git \
+    gnupg \
+    gpg-agent \
     ninja-build \
     pkg-config \
     python3 \
