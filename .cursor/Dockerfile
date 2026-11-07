@@ -7,15 +7,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     cmake \
     curl \
+    dirmngr \
     git \
+    gnupg \
+    gpg-agent \
     ninja-build \
     pkg-config \
     python3 \
     python3-pip \
     python3-venv \
+    software-properties-common \
     time \
-    gcc-11 \
-    g++-11 \
     libfontconfig-dev \
     libfreetype6-dev \
     libgl1-mesa-dev \
@@ -24,6 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libxinerama-dev \
     libxrandr-dev \
+ && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+    gcc-14 \
+    g++-14 \
  && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /workspace/phoenix-firestorm
