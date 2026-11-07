@@ -49,6 +49,8 @@ private:
     void setFilter(LLSD const &data);
     void setSort(LLSD const &data);
     void setViewMode(LLSD const &data);
+    void getContextActions(LLSD const &data);
+    void resolveLink(LLSD const &data);
 };
 
 #endif // LL_LLINVENTORYLISTENER_H
