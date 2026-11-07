@@ -35,8 +35,8 @@ python -m pip install "$AUTOBUILD_ROOT"
 python -m pip install -r "$FIRESTORM_ROOT/requirements.txt"
 
 export AUTOBUILD_VARIABLES_FILE="$BUILD_VARIABLES_ROOT/variables"
-export CC=gcc-11
-export CXX=g++-11
+export CC=gcc-14
+export CXX=g++-14
 export PATH="$VENV_ROOT/bin:$PATH"
 
 cat > "$HOME/.config/firestorm-build.env" <<EOF
