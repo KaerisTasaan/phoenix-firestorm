@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llpanelmaininventory.h"
+#include "llinventorymcpcontract.h"
 
 #include "llagent.h"
 #include "llagentbenefits.h"
@@ -3581,6 +3582,147 @@ LLInventoryFilter& LLPanelMainInventory::getCurrentFilter()
     {
         return mActivePanel->getFilter();
     }
+}
+
+LLSD LLPanelMainInventory::getInventoryMCPState(unsigned max_rows) const
+{
+    LLSD state;
+    state["panel_token"] = mInventoryMCPPanelToken;
+    state["session_id"] = mInventoryMCPSessionID;
+    state["ui_state_version"] = LLSD::Integer(mInventoryMCPStateVersion);
+    state["view_mode"] = isListViewMode() ? "list" : (isGalleryViewMode() ? "gallery" : "combination");
+    state["filter"] = mFilterText;
+
+    if (!mActivePanel)
+    {
+        state["available"] = false;
+        state["rows"] = LLSD::emptyArray();
+        return state;
+    }
+
+    state["available"] = true;
+    state["sort_order"] = LLSD::Integer(mActivePanel->getSortOrder());
+    LLSD selected = LLSD::emptyArray();
+    for (const LLFolderViewItem* item : mActivePanel->getSelectedItems())
+    {
+        if (const auto* model = dynamic_cast<const LLFolderViewModelItemInventory*>(item->getViewModelItem()))
+        {
+            selected.append(model->getUUID());
+        }
+    }
+    state["selected"] = selected;
+
+    max_rows = std::min(max_rows, LLInventoryMCP::MAX_PAGE_SIZE);
+    LLSD rows = LLSD::emptyArray();
+    LLFolderViewItem* item = mActivePanel->getRootFolder()->getNextOpenNode(true);
+    while (item && rows.size() < max_rows)
+    {
+        if (item->isPotentiallyVisible())
+        {
+            if (const auto* model = dynamic_cast<const LLFolderViewModelItemInventory*>(item->getViewModelItem()))
+            {
+                LLSD row;
+                row["id"] = model->getUUID();
+                LLUUID parent_id;
+                if (item->getParentFolder())
+                {
+                    if (const auto* parent_model =
+                            dynamic_cast<const LLFolderViewModelItemInventory*>(
+                                item->getParentFolder()->getViewModelItem()))
+                    {
+                        parent_id = parent_model->getUUID();
+                    }
+                }
+                row["parent_id"] = parent_id;
+                row["name"] = item->getName();
+                row["kind"] = dynamic_cast<const LLFolderViewFolder*>(item) ? "folder" : "item";
+                row["visible"] = true;
+                row["expanded"] = dynamic_cast<const LLFolderViewFolder*>(item)
+                    ? dynamic_cast<const LLFolderViewFolder*>(item)->isOpen()
+                    : false;
+                rows.append(row);
+            }
+        }
+        item = item->getNextOpenNode(true);
+    }
+    state["rows"] = rows;
+    state["returned_count"] = LLSD::Integer(static_cast<S32>(rows.size()));
+    state["complete"] = item == nullptr;
+    state["truncated"] = item != nullptr;
+    state["limited"] = item != nullptr;
+    state["next_cursor"] = LLSD();
+    state["limit_reason"] = item ? "page_size" : LLSD();
+    return state;
+}
+
+bool LLPanelMainInventory::setInventoryMCPExpansion(const LLUUID& folder_id, bool expanded)
+{
+    if (!mActivePanel)
+    {
+        return false;
+    }
+    LLFolderViewFolder* folder = mActivePanel->getFolderByID(folder_id);
+    if (!folder)
+    {
+        return false;
+    }
+    folder->setOpen(expanded);
+    ++mInventoryMCPStateVersion;
+    return true;
+}
+
+bool LLPanelMainInventory::setInventoryMCPSelection(const LLUUID& object_id)
+{
+    if (!mActivePanel || !mActivePanel->getItemByID(object_id))
+    {
+        return false;
+    }
+    mActivePanel->setSelection(object_id, true);
+    ++mInventoryMCPStateVersion;
+    return true;
+}
+
+void LLPanelMainInventory::setInventoryMCPFilter(const std::string& filter)
+{
+    if (mActivePanel)
+    {
+        mActivePanel->setFilterSubString(filter);
+        mFilterText = filter;
+        ++mInventoryMCPStateVersion;
+    }
+}
+
+void LLPanelMainInventory::setInventoryMCPSort(U32 sort_order)
+{
+    if (mActivePanel)
+    {
+        mActivePanel->setSortOrder(sort_order);
+        ++mInventoryMCPStateVersion;
+    }
+}
+
+bool LLPanelMainInventory::setInventoryMCPViewMode(const std::string& view_mode)
+{
+    EViewModeType mode;
+    if (view_mode == "list")
+    {
+        mode = MODE_LIST;
+    }
+    else if (view_mode == "gallery")
+    {
+        mode = MODE_GALLERY;
+    }
+    else if (view_mode == "combination")
+    {
+        mode = MODE_COMBINATION;
+    }
+    else
+    {
+        return false;
+    }
+    setViewMode(mode);
+    ++mInventoryMCPStateVersion;
+    return true;
 }
 
 void LLPanelMainInventory::setGallerySelection(const LLUUID& item_id, bool new_window)
