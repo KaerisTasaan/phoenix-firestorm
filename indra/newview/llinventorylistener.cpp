@@ -27,8 +27,14 @@
 
 #include "llinventorylistener.h"
 
+#include "llfloatersidepanelcontainer.h"
 #include "llappearancemgr.h"
+#include "llinventorybridge.h"
 #include "llinventoryfunctions.h"
+#include "llinventorymcpcontract.h"
+#include "llinventorypanel.h"
+#include "llpanelmaininventory.h"
+#include "llsidepanelinventory.h"
 #include "lltransutil.h"
 #include "llwearableitemslist.h"
 #include "stringize.h"
@@ -75,6 +81,50 @@ LLInventoryListener::LLInventoryListener()
         "[\"filter_links\"]: EXCLUDE_LINKS - don't show links, ONLY_LINKS - only show links, INCLUDE_LINKS - show links too (default)",
         &LLInventoryListener::collectDescendantsIf,
         llsd::map("folder_id", LLSD(), "reply", LLSD()));
+
+    add("getUIState",
+        "Return the bounded state of the active inventory panel.",
+        &LLInventoryListener::getUIState,
+        llsd::map("max_rows", LLSD(), "reply", LLSD()));
+    add("expandFolder",
+        "Expand a folder in the active inventory panel.",
+        &LLInventoryListener::expandFolder,
+        llsd::map("folder_id", LLSD(), "reply", LLSD()));
+    add("collapseFolder",
+        "Collapse a folder in the active inventory panel.",
+        &LLInventoryListener::collapseFolder,
+        llsd::map("folder_id", LLSD(), "reply", LLSD()));
+    add("selectObject",
+        "Select an object in the active inventory panel.",
+        &LLInventoryListener::selectObject,
+        llsd::map("object_id", LLSD(), "reply", LLSD()));
+    add("setFilter",
+        "Set the filter text in the active inventory panel.",
+        &LLInventoryListener::setFilter,
+        llsd::map("filter", LLSD(), "reply", LLSD()));
+    add("setSort",
+        "Set the sort order in the active inventory panel.",
+        &LLInventoryListener::setSort,
+        llsd::map("sort_order", LLSD(), "reply", LLSD()));
+    add("setViewMode",
+        "Set the active inventory panel view mode.",
+        &LLInventoryListener::setViewMode,
+        llsd::map("view_mode", LLSD(), "reply", LLSD()));
+    add("getContextActions",
+        "Return available context actions for an inventory object.",
+        &LLInventoryListener::getContextActions,
+        llsd::map("object_id", LLSD(), "reply", LLSD()));
+    add("resolveLink",
+        "Resolve an inventory link without changing viewer state.",
+        &LLInventoryListener::resolveLink,
+        llsd::map("object_id", LLSD(), "reply", LLSD()));
+}
+
+LLPanelMainInventory* active_inventory_main_panel()
+{
+    LLSidepanelInventory* sidepanel =
+        LLFloaterSidePanelContainer::findPanel<LLSidepanelInventory>("inventory");
+    return sidepanel ? sidepanel->getMainInventoryPanel() : nullptr;
 }
 
 void add_cat_info(LLEventAPI::Response& response, LLViewerInventoryCategory* cat)
@@ -217,6 +267,174 @@ void LLInventoryListener::collectDescendantsIf(LLSD const &data)
     gInventory.collectDescendentsIf(folder_id, cat_array, item_array, LLInventoryModel::EXCLUDE_TRASH, collector);
 
     add_objects_info(response, cat_array, item_array);
+}
+
+void LLInventoryListener::getUIState(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel)
+    {
+        return response.error("The inventory panel is unavailable");
+    }
+
+    unsigned max_rows = LLInventoryMCP::MAX_PAGE_SIZE;
+    if (data["max_rows"].isInteger())
+    {
+        const S32 requested = data["max_rows"].asInteger();
+        if (requested < 1)
+        {
+            return response.error("max_rows must be greater than zero");
+        }
+        max_rows = static_cast<unsigned>(requested);
+    }
+    Response state_response(panel->getInventoryMCPState(max_rows), data);
+}
+
+void LLInventoryListener::expandFolder(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel || !panel->setInventoryMCPExpansion(data["folder_id"].asUUID(), true))
+    {
+        return response.error("The folder is unavailable in the active inventory panel");
+    }
+    Response state_response(panel->getInventoryMCPState(LLInventoryMCP::MAX_PAGE_SIZE), data);
+}
+
+void LLInventoryListener::collapseFolder(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel || !panel->setInventoryMCPExpansion(data["folder_id"].asUUID(), false))
+    {
+        return response.error("The folder is unavailable in the active inventory panel");
+    }
+    Response state_response(panel->getInventoryMCPState(LLInventoryMCP::MAX_PAGE_SIZE), data);
+}
+
+void LLInventoryListener::selectObject(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel || !panel->setInventoryMCPSelection(data["object_id"].asUUID()))
+    {
+        return response.error("The object is unavailable in the active inventory panel");
+    }
+    Response state_response(panel->getInventoryMCPState(LLInventoryMCP::MAX_PAGE_SIZE), data);
+}
+
+void LLInventoryListener::setFilter(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel || !data["filter"].isString())
+    {
+        return response.error("The inventory panel or filter is unavailable");
+    }
+    panel->setInventoryMCPFilter(data["filter"].asString());
+    Response state_response(panel->getInventoryMCPState(LLInventoryMCP::MAX_PAGE_SIZE), data);
+}
+
+void LLInventoryListener::setSort(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel || !data["sort_order"].isInteger())
+    {
+        return response.error("The inventory panel or sort order is unavailable");
+    }
+    panel->setInventoryMCPSort(static_cast<U32>(data["sort_order"].asInteger()));
+    Response state_response(panel->getInventoryMCPState(LLInventoryMCP::MAX_PAGE_SIZE), data);
+}
+
+void LLInventoryListener::setViewMode(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel || !data["view_mode"].isString() ||
+        !panel->setInventoryMCPViewMode(data["view_mode"].asString()))
+    {
+        return response.error("The inventory panel or view mode is unavailable");
+    }
+    Response state_response(panel->getInventoryMCPState(LLInventoryMCP::MAX_PAGE_SIZE), data);
+}
+
+void LLInventoryListener::getContextActions(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLPanelMainInventory* panel = active_inventory_main_panel();
+    if (!panel)
+    {
+        return response.error("The inventory panel is unavailable");
+    }
+
+    LLInventoryPanel* active_panel = panel->getActivePanel();
+    LLFolderViewItem* item = active_panel ? active_panel->getItemByID(data["object_id"].asUUID()) : nullptr;
+    auto* bridge = item
+        ? dynamic_cast<LLInvFVBridge*>(item->getViewModelItem())
+        : nullptr;
+    if (!bridge)
+    {
+        return response.error("The object is unavailable in the active inventory panel");
+    }
+
+    LLSD actions = LLSD::emptyArray();
+    auto add_action = [&actions](const char* id, const char* label, bool available)
+    {
+        actions.append(llsd::map("id", id, "label", label, "available", available));
+    };
+    add_action("open", "Open", true);
+    add_action("rename", "Rename", bridge->isItemRenameable());
+    add_action("move", "Move", bridge->isItemMovable());
+    add_action("copy", "Copy", bridge->isItemCopyable());
+    add_action("delete", "Delete", bridge->isItemRemovable());
+
+    response["actions"] = actions;
+    response["object_id"] = bridge->getUUID();
+}
+
+void LLInventoryListener::resolveLink(LLSD const &data)
+{
+    Response response(LLSD(), data);
+    LLUUID current_id(data["object_id"].asUUID());
+    if (current_id.isNull())
+    {
+        return response.error("object_id must be a valid UUID");
+    }
+
+    LLSD chain = LLSD::emptyArray();
+    for (unsigned depth = 0; depth <= LLInventoryMCP::MAX_LINK_DEPTH; ++depth)
+    {
+        LLViewerInventoryItem* item = gInventory.getItem(current_id);
+        if (!item)
+        {
+            response["status"] = "not_found";
+            response["chain"] = chain;
+            return;
+        }
+        chain.append(item->getUUID());
+        if (!item->getIsLinkType())
+        {
+            response["status"] = "resolved";
+            response["target_id"] = item->getUUID();
+            response["chain"] = chain;
+            return;
+        }
+        if (depth == LLInventoryMCP::MAX_LINK_DEPTH)
+        {
+            response["status"] = "link_depth_exceeded";
+            response["chain"] = chain;
+            return;
+        }
+        current_id = item->getLinkedUUID();
+        if (current_id.isNull())
+        {
+            response["status"] = "broken_link";
+            response["chain"] = chain;
+            return;
+        }
+    }
 }
 
 LLFilteredCollector::LLFilteredCollector(LLSD const &data) :

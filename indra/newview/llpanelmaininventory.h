@@ -146,13 +146,20 @@ public:
     void scrollToInvPanelSelection();
 
     void setViewMode(EViewModeType mode);
-    bool isListViewMode() { return (mViewMode == MODE_LIST); }
-    bool isGalleryViewMode() { return (mViewMode == MODE_GALLERY); }
-    bool isCombinationViewMode() { return (mViewMode == MODE_COMBINATION); }
+    bool isListViewMode() const { return (mViewMode == MODE_LIST); }
+    bool isGalleryViewMode() const { return (mViewMode == MODE_GALLERY); }
+    bool isCombinationViewMode() const { return (mViewMode == MODE_COMBINATION); }
     LLUUID getCurrentSFVRoot();
     std::string getLocalizedRootName();
 
     LLInventoryFilter& getCurrentFilter();
+
+    LLSD getInventoryMCPState(unsigned max_rows) const;
+    bool setInventoryMCPExpansion(const LLUUID& folder_id, bool expanded);
+    bool setInventoryMCPSelection(const LLUUID& object_id);
+    void setInventoryMCPFilter(const std::string& filter);
+    void setInventoryMCPSort(U32 sort_order);
+    bool setInventoryMCPViewMode(const std::string& view_mode);
 
     void setParentSidepanel(LLSidepanelInventory* parent_sidepanel) { mParentSidepanel = parent_sidepanel; }
     void setInboxPanel(LLPanelMarketplaceInbox* inbox_panel) { mInboxPanel = inbox_panel; }
@@ -277,6 +284,10 @@ private:
     // </FS:Zi> Filter dropdown
 
     std::unique_ptr<class FSInventoryCustomTabs> mCustomTabs; // <FS:PP> FIRE-35598: Custom filters in inventory (feature idea: Catznip)
+
+    LLUUID                      mInventoryMCPPanelToken{ LLUUID::generateNewID() };
+    LLUUID                      mInventoryMCPSessionID{ LLUUID::generateNewID() };
+    U64                         mInventoryMCPStateVersion = 0;
 
     boost::signals2::connection mListViewRootUpdatedConnection;
     boost::signals2::connection mGalleryRootUpdatedConnection;

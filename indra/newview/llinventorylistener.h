@@ -42,6 +42,15 @@ private:
     void getBasicFolderID(LLSD const &data);
     void getDirectDescendants(LLSD const &data);
     void collectDescendantsIf(LLSD const &data);
+    void getUIState(LLSD const &data);
+    void expandFolder(LLSD const &data);
+    void collapseFolder(LLSD const &data);
+    void selectObject(LLSD const &data);
+    void setFilter(LLSD const &data);
+    void setSort(LLSD const &data);
+    void setViewMode(LLSD const &data);
+    void getContextActions(LLSD const &data);
+    void resolveLink(LLSD const &data);
 };
 
 #endif // LL_LLINVENTORYLISTENER_H
