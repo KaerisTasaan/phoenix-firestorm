@@ -8,8 +8,12 @@ BUILD_VARIABLES_COMMIT="c17312d38377c003977cf5b6dcc83c6042eba194"
 AUTOBUILD_ROOT="${AUTOBUILD_ROOT:-$SRC_ROOT/autobuild}"
 AUTOBUILD_COMMIT="main"
 VENV_ROOT="${VENV_ROOT:-$HOME/.venvs/firestorm-build}"
+FIRESTORM_RELEASE_REF="Firestorm_Release_7.2.5.81788"
 
 mkdir -p "$SRC_ROOT" "$HOME/.config"
+
+git -C "$FIRESTORM_ROOT" fetch --tags origin
+git -C "$FIRESTORM_ROOT" checkout --detach "$FIRESTORM_RELEASE_REF"
 
 if [[ ! -d "$BUILD_VARIABLES_ROOT/.git" ]]; then
     git clone https://github.com/KaerisTasaan/fs-build-variables.git "$BUILD_VARIABLES_ROOT"
