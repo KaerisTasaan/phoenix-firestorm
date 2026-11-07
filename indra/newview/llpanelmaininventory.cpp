@@ -1387,6 +1387,7 @@ bool LLPanelMainInventory::handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
 void LLPanelMainInventory::changed(U32)
 {
     updateItemcountText();
+    ++mInventoryMCPStateVersion;
 }
 
 void LLPanelMainInventory::setFocusOnFilterEditor()
@@ -1612,6 +1613,7 @@ void LLPanelMainInventory::onSelectionChange(LLInventoryPanel *panel, const std:
 {
     updateListCommands();
     panel->onSelectionChange(items, user_action);
+    ++mInventoryMCPStateVersion;
 }
 
 ///----------------------------------------------------------------------------
@@ -2217,6 +2219,7 @@ void LLPanelMainInventory::setActivePanel()
     {
         mActivePanel = (LLInventoryPanel*)mFilterTabs->getCurrentPanel();
     }
+    ++mInventoryMCPStateVersion;
     mViewModeBtn->setEnabled(mSingleFolderMode || (getAllItemsPanel() == getActivePanel()));
 }
 
