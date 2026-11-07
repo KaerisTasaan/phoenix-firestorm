@@ -25,5 +25,3 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxinerama-dev \
     libxrandr-dev \
  && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /workspace/phoenix-firestorm
